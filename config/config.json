@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "audio-translate-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/audioTranslate/AudioTranslateWebPart.js",
+          "manifest": "./src/webparts/audioTranslate/AudioTranslateWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "AudioTranslateWebPartStrings": "lib/webparts/audioTranslate/loc/{locale}.js"
+  }
+}
