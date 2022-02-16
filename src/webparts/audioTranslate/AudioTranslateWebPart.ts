@@ -21,7 +21,8 @@ export default class AudioTranslateWebPart extends BaseClientSideWebPart<IAudioT
     const element: React.ReactElement<IAudioTranslateProps> = React.createElement(
       AudioTranslate,
       {
-        description: this.properties.description
+        description: this.properties.description,
+        context:this.context
       }
     );
 
