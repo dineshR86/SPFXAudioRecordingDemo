@@ -20,7 +20,8 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
       isRecording:false,
       recordings:[],
       blob:null,
-      filePickerResult:[]
+      filePickerResult:[],
+      msgs:[]
     }
   }
 
@@ -170,16 +171,42 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
     }
   }
 
+  rendermsg=async (msgobj)=>{
+    const msgbody:string=msgobj.body.content;
+    const graphclient= await this.props.context.msGraphClientFactory.getClient();
+    let imageUrl="";
+    if(msgbody.indexOf("hostedContents")>-1){
+      const tags=msgbody.match(/\<img.+src\=(?:\"|\')(.+?)(?:\"|\')(?:.+?)\>/)
+      let chatmsgurl=tags[1].replace("https://graph.microsoft.com/v1.0","");
+    
+    const response=await graphclient.api(chatmsgurl).responseType("arrayBuffer").version("beta").get();
+    let blob = new Blob([response], { type: "image/jpeg" });
+    imageUrl = window.URL.createObjectURL(blob);
+    }
+
+    if(msgbody.indexOf("hostedContents")>-1){
+    return <img src={imageUrl}></img>}
+  }
+
 
   public render(): React.ReactElement<IAudioTranslateProps> {
     const { isLoading, isRecording, recordings } = this.state;
+    const staticHtml="<div><div><div><p>Inline Image:</p><span><img height=\"297\" src=\"https://graph.microsoft.com/v1.0/chats/19:14da7990-1912-4a01-a4dd-f0d755c615f3_869e967c-2983-44b7-8618-d9c83c3543a4@unq.gbl.spaces/messages/1645016724649/hostedContents/aWQ9eF8wLXd1cy1kNS1iMWM4OWVmMTE3MDdmNGJmZTE5MjNkYmZiZjI4MTQzZCx0eXBlPTEsdXJsPWh0dHBzOi8vdXMtYXBpLmFzbS5za3lwZS5jb20vdjEvb2JqZWN0cy8wLXd1cy1kNS1iMWM4OWVmMTE3MDdmNGJmZTE5MjNkYmZiZjI4MTQzZC92aWV3cy9pbWdv/$value\" width=\"297\" style=\"vertical-align:bottom; width:297px; height:297px\"></span></div></div></div>";
         return (
           <div className={ styles.audioTranslate }>
             <div className={ styles.container }>
               <div className={ styles.row }>
                 <div className={ styles.column }>
-                  <span className={ styles.title }>Welcome to SharePoint!</span>
-                  <p className={ styles.subTitle }>Customize SharePoint experiences using Web Parts.</p>
+                  <div id="msgs">
+                  {this.state.msgs.map((item)=>{
+                    
+                      return (<div>
+                        <div dangerouslySetInnerHTML={{__html:item.body}}></div>
+                        <div dangerouslySetInnerHTML={{__html:item.imgs}}></div>
+                      </div>)
+                    
+                  })}</div>
+                    {/* <div dangerouslySetInnerHTML={{__html:staticHtml}}></div> */}
                     <div>
                       <button disabled={isLoading} onClick={this.record}>
                         {isRecording ? "Stop" : "Record"}
@@ -196,7 +223,7 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
                         ))}
                       </ul>
 
-                      <FilePicker
+                          <FilePicker
                           label='Document Upload'
                           buttonIcon="FileImage"
                           onSave={this._onFilePickerSave}
@@ -217,4 +244,65 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
           </div>
         );
   }
+
+  componentDidMount(): void {
+    let chatmsgurl=`/chats/19:14da7990-1912-4a01-a4dd-f0d755c615f3_869e967c-2983-44b7-8618-d9c83c3543a4@unq.gbl.spaces/messages`;
+    this.props.context.msGraphClientFactory.getClient().then((client:MSGraphClient)=>{
+      client.api(chatmsgurl).version("v1.0").header("Accept","application/json").get().then((data)=>{
+        console.log("msgs data:",data.value);
+        // this.setState({
+        //   msgs:data.value.slice(0,5)
+        // })
+        this.processmsgData(data.value.slice(0,5));
+      }).catch((err)=>{
+        console.log(err);
+      })
+    });
+  }
+
+  async processmsgData(records:any[]){
+    debugger;
+    //let messags:any[]=[];
+    const graphclient= await this.props.context.msGraphClientFactory.getClient();
+    records.forEach(async (record)=>{
+      const msgbody:string=record.body.content;
+      
+      let imageUrl="";
+      if(msgbody.indexOf("hostedContents")>-1){
+        const tags=msgbody.match(/\<img.+src\=(?:\"|\')(.+?)(?:\"|\')(?:.+?)\>/)
+        let chatmsgurl=tags[1].replace("https://graph.microsoft.com/v1.0","");
+      
+      const response=await graphclient.api(chatmsgurl).responseType("arrayBuffer").version("beta").get();
+      let blob = new Blob([response], { type: "image/jpeg" });
+      imageUrl = window.URL.createObjectURL(blob);
+      let messags=this.state.msgs;
+      const message={
+        body:record.body.content.replace(/<img .*?>/g,""),
+        imgs:`<img style="vertical-align:bottom; width:297px; height:297px" src=${imageUrl} />`,
+        attachment:""
+      }
+      messags.push(message);
+      this.setState({
+        msgs:messags
+      })
+      console.log(this.state.msgs);
+    }else{
+      let messags=this.state.msgs;
+      const message={
+        body:record.body.content.replace(/<img .*?>/g,""),
+        imgs:"",
+        attachment:""
+      }
+      messags.push(message);
+      this.setState({
+        msgs:messags
+      })
+    }
+    
+  });
+    console.log(this.state.msgs);
+    
+  }
+  
 }
+

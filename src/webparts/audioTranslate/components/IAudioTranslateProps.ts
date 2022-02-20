@@ -11,5 +11,6 @@ export interface IAudioTranslateState{
     isRecording: boolean,
     recordings: any[],
     blob:any,
-    filePickerResult:IFilePickerResult[]
+    filePickerResult:IFilePickerResult[],
+    msgs:any[]
 }
