@@ -12,5 +12,8 @@ export interface IAudioTranslateState{
     recordings: any[],
     blob:any,
     filePickerResult:IFilePickerResult[],
-    msgs:any[]
+    msgs:any[],
+    txtValue:string,
+    detectedlanguage:string,
+    translatedtext:string
 }

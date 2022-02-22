@@ -1,14 +1,21 @@
 import * as React from 'react';
 import styles from './AudioTranslate.module.scss';
 import { IAudioTranslateProps, IAudioTranslateState } from './IAudioTranslateProps';
-import { SPHttpClient,ISPHttpClientOptions,SPHttpClientResponse,MSGraphClient } from '@microsoft/sp-http';
+import { SPHttpClient,ISPHttpClientOptions,SPHttpClientResponse,MSGraphClient,HttpClient } from '@microsoft/sp-http';
 import { Guid } from '@microsoft/sp-core-library';
 import vmsg from "vmsg";
 import { FilePicker, IFilePickerResult } from '@pnp/spfx-controls-react/lib/FilePicker';
+import { TextField } from '@fluentui/react/lib/TextField';
+const axios:any = require('axios');
+const { v4: uuidv4 } = require('uuid');
 
 const recorder:any = new vmsg.Recorder({
   wasmURL: "https://unpkg.com/vmsg@0.3.0/vmsg.wasm"
 });
+
+const subscriptionKey = "225fb644c57748309aeaa9643f7b92d4";
+const endpoint = "https://api.cognitive.microsofttranslator.com";
+const location = "westeurope";
 
 
 export default class AudioTranslate extends React.Component<IAudioTranslateProps, IAudioTranslateState> {
@@ -21,8 +28,13 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
       recordings:[],
       blob:null,
       filePickerResult:[],
-      msgs:[]
+      msgs:[],
+      txtValue:"",
+      detectedlanguage:"",
+      translatedtext:""
     }
+
+    this.onTranslateClick=this.onTranslateClick.bind(this);
   }
 
   record = async () => {
@@ -188,6 +200,46 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
     return <img src={imageUrl}></img>}
   }
 
+  ontxtchange= (ev:any,val:string)=>{
+    
+    this.setState({
+      txtValue:val
+    });
+  }
+
+  onTranslateClick=async ()=>{
+    const response=await axios({
+      baseURL: endpoint,
+      url: '/translate',
+      method: 'post',
+      headers: {
+          'Ocp-Apim-Subscription-Key': subscriptionKey,
+          'Ocp-Apim-Subscription-Region': location,
+          'Content-type': 'application/json',
+          'X-ClientTraceId': uuidv4().toString()
+      },
+      params: {
+          'api-version': '3.0',
+          'to': ['en']
+      },
+      data: [{
+          'text': this.state.txtValue
+      }],
+      responseType: 'json'
+  });
+  console.log(response.data);
+  const transobj=response.data[0];
+      const detlang=transobj.detectedLanguage.language;
+      const transtext=transobj.translations[0].text;
+      this.setState({
+        detectedlanguage:detlang,
+        translatedtext:transtext
+      });
+  
+  }
+
+  
+
 
   public render(): React.ReactElement<IAudioTranslateProps> {
     const { isLoading, isRecording, recordings } = this.state;
@@ -238,6 +290,16 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
                           onChange={(filePickerResult: IFilePickerResult[]) => { this.setState({filePickerResult }) }}
                           context={this.props.context}/>    
                     </div>
+                    <div id="trans">
+                        <TextField label="Standard" multiline rows={3} value={this.state.txtValue} onChange={this.ontxtchange} />
+                        <button onClick={this.onTranslateClick}>Translate</button>
+                    </div>
+                    <div>
+                    <div><strong>Tranlated value</strong>:
+                      {this.state.translatedtext}</div>
+                      <div><strong>Identified language</strong>:
+                      {this.state.detectedlanguage}</div>   
+                    </div>
                 </div>
               </div>
             </div>
@@ -261,7 +323,6 @@ export default class AudioTranslate extends React.Component<IAudioTranslateProps
   }
 
   async processmsgData(records:any[]){
-    debugger;
     //let messags:any[]=[];
     const graphclient= await this.props.context.msGraphClientFactory.getClient();
     records.forEach(async (record)=>{
